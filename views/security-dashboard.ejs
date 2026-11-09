@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digital Key Log | Security Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-page="security-dashboard">
+    <nav class="topbar">
+      <div class="brand"><span class="brand-mark">DKL</span> Digital Key Log · Security Dashboard</div>
+      <div class="nav-links">
+        <form action="/logout" method="POST" style="display:inline; margin: 0;">
+          <button type="submit" class="link-button secondary-btn px-3 py-2 text-xs">Logout</button>
+        </form>
+      </div>
+    </nav>
+
+    <main class="page">
+      <header class="page-intro">
+        <div>
+          <span class="eyebrow">Operasional</span>
+          <h1 class="heading">Peminjaman Kunci</h1>
+        </div>
+      </header>
+      <div class="dashboard-toolbar">
+        <div class="dashboard-tabs" role="tablist" aria-label="Dashboard security">
+          <button id="requests-tab" class="dashboard-tab" type="button" role="tab" aria-selected="true" aria-controls="requests-panel">
+            Request
+          </button>
+          <button id="rooms-tab" class="dashboard-tab" type="button" role="tab" aria-selected="false" aria-controls="rooms-panel" tabindex="-1">
+            Ruangan
+          </button>
+        </div>
+        <label id="dashboard-search-label" class="request-search-field">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="8.75" cy="8.75" r="5.75" stroke="currentColor" stroke-width="1.5" />
+            <path d="m13 13 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          <input id="request-search" type="search" placeholder="Cari nama, NIM, atau ruangan" autocomplete="off" aria-labelledby="dashboard-search-label" />
+        </label>
+      </div>
+
+      <div class="dashboard-content">
+        <section id="requests-panel" class="panel dashboard-panel" role="tabpanel" aria-labelledby="requests-tab">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Perlu ditangani</span>
+              <h2>Request Peminjaman</h2>
+            </div>
+            <span id="request-count" class="count-badge">0 aktif</span>
+          </div>
+          <ul id="request-list" class="request-list"></ul>
+        </section>
+
+        <section id="rooms-panel" class="panel dashboard-panel" role="tabpanel" aria-labelledby="rooms-tab" hidden>
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Status terkini</span>
+              <h2>Ringkasan Ruangan</h2>
+            </div>
+            <span id="room-count" class="count-badge">0 ruangan</span>
+          </div>
+          <ul id="room-summary" class="meta-list"></ul>
+        </section>
+      </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const initialData = <%- JSON.stringify({ rooms, transactions, securities }) %>;
+      let roomMap = new Map((initialData.rooms || []).map((room) => [room.id, room]));
+      const requestSearch = document.getElementById('request-search');
+      let currentTransactions = initialData.transactions || [];
+      let currentSecurities = initialData.securities || [];
+      let currentRooms = initialData.rooms || [];
+      const tabs = [
+        { button: document.getElementById('requests-tab'), panel: document.getElementById('requests-panel') },
+        { button: document.getElementById('rooms-tab'), panel: document.getElementById('rooms-panel') },
+      ];
+
+      const activateTab = (activeTab, moveFocus = false) => {
+        tabs.forEach(({ button, panel }) => {
+          const isActive = button === activeTab;
+          button.setAttribute('aria-selected', String(isActive));
+          button.tabIndex = isActive ? 0 : -1;
+          panel.hidden = !isActive;
+        });
+        const isRequestTab = activeTab === document.getElementById('requests-tab');
+        requestSearch.placeholder = isRequestTab
+          ? 'Cari nama, NIM, atau ruangan'
+          : 'Cari ruangan untuk cek ketersediaan';
+        renderRoomSummary(currentRooms);
+
+        if (moveFocus) activeTab.focus();
+      };
+
+      tabs.forEach(({ button }, index) => {
+        button.addEventListener('click', () => activateTab(button));
+        button.addEventListener('keydown', (event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          event.preventDefault();
+          const nextIndex = event.key === 'ArrowRight'
+            ? (index + 1) % tabs.length
+            : (index - 1 + tabs.length) % tabs.length;
+          activateTab(tabs[nextIndex].button, true);
+        });
+      });
+
+      const renderRoomSummary = (rooms) => {
+        const summary = document.getElementById('room-summary');
+        summary.innerHTML = '';
+        const query = requestSearch.value.trim().toLocaleLowerCase();
+        const filteredRooms = rooms.filter((room) => room.room_name.toLocaleLowerCase().includes(query));
+        document.getElementById('room-count').textContent = query
+          ? `${filteredRooms.length} dari ${rooms.length} ruangan`
+          : `${rooms.length} ruangan`;
+
+        if (!filteredRooms.length) {
+          const item = document.createElement('li');
+          item.className = 'request-card';
+          item.textContent = query ? 'Tidak ada ruangan yang cocok dengan pencarian.' : 'Belum ada ruangan.';
+          summary.appendChild(item);
+          return;
+        }
+
+        filteredRooms.forEach((room) => {
+          const item = document.createElement('li');
+          const name = document.createElement('strong');
+          const status = document.createElement('span');
+          const isBorrowed = room.status === 'BORROWED';
+
+          item.className = 'room-summary-item';
+          name.textContent = room.room_name;
+          status.className = `room-status-badge${isBorrowed ? ' is-borrowed' : ''}`;
+          status.textContent = isBorrowed ? 'Dipinjam' : 'Tersedia';
+          item.append(name, status);
+          summary.appendChild(item);
+        });
+      };
+
+      const renderRequests = () => {
+        const query = requestSearch.value.trim().toLocaleLowerCase();
+        const filteredTransactions = currentTransactions.filter((transaction) => {
+          const borrowerName = String(transaction.borrower_name || '').toLocaleLowerCase();
+          const idNumber = String(transaction.borrower_id_number || '').toLocaleLowerCase();
+          const roomNames = (transaction.rooms || [])
+            .map((roomId) => roomMap.get(roomId)?.room_name || roomId)
+            .join(' ')
+            .toLocaleLowerCase();
+
+          return borrowerName.includes(query) || idNumber.includes(query) || roomNames.includes(query);
+        });
+        const list = document.getElementById('request-list');
+        const count = document.getElementById('request-count');
+
+        count.textContent = query
+          ? `${filteredTransactions.length} dari ${currentTransactions.length} aktif`
+          : `${currentTransactions.length} aktif`;
+
+        if (!filteredTransactions.length) {
+          list.innerHTML = `<li class="request-card">${query ? 'Tidak ada request yang cocok dengan pencarian.' : 'Belum ada request aktif.'}</li>`;
+          return;
+        }
+
+        list.innerHTML = filteredTransactions.map((transaction) => {
+          const roomNames = (transaction.rooms || []).map((roomId) => roomMap.get(roomId)?.room_name || roomId).join(', ');
+          const activeSecurities = currentSecurities.filter((security) => security.is_active);
+          const securityOptions = activeSecurities.map((security) => `<option value="${security.id}">${security.name}</option>`).join('');
+          const statusClass = transaction.status.toLowerCase();
+
+          return `
+            <li class="request-card">
+              <div class="request-header">
+                <strong>${transaction.borrower_name}</strong>
+                <span class="badge ${statusClass}">${transaction.status}</span>
+              </div>
+              <div>NIM/NIK: ${transaction.borrower_id_number}</div>
+              <div>HP: ${transaction.borrower_phone}</div>
+              <div>Ruangan: ${roomNames}</div>
+              <div class="inline-actions">
+                <select class="security-select" data-transaction-id="${transaction.id}">
+                  <option value="">${activeSecurities.length ? 'Pilih security' : 'Belum ada security aktif'}</option>
+                  ${securityOptions}
+                </select>
+                ${transaction.status === 'REQUESTED'
+                  ? `<button class="primary-btn action-btn" data-action="borrow" data-id="${transaction.id}" ${activeSecurities.length ? '' : 'disabled'}>Dipinjamkan</button>`
+                  : `<button class="secondary-btn action-btn" data-action="return" data-id="${transaction.id}" ${activeSecurities.length ? '' : 'disabled'}>Dikembalikan</button>`}
+              </div>
+            </li>
+          `;
+        }).join('');
+
+        list.querySelectorAll('button[data-action]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const transactionId = button.dataset.id;
+            const action = button.dataset.action;
+            const securitySelect = list.querySelector(`[data-transaction-id="${transactionId}"]`);
+            const securityId = securitySelect ? securitySelect.value : '';
+
+            if (!securityId) {
+              alert('Pilih nama security terlebih dahulu.');
+              return;
+            }
+
+            const endpoint = action === 'borrow'
+              ? `/api/security/transactions/${transactionId}/borrow`
+              : `/api/security/transactions/${transactionId}/return`;
+
+            try {
+              const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ security_id: securityId })
+              });
+
+              const result = await response.json();
+              if (!response.ok) throw new Error(result.message || 'Gagal update status.');
+              alert(result.message);
+            } catch (error) {
+              alert(error.message);
+            }
+          });
+        });
+      };
+
+      requestSearch.addEventListener('input', () => {
+        renderRequests();
+        renderRoomSummary(currentRooms);
+      });
+
+      const renderDashboard = (payload) => {
+        const rooms = payload.rooms || initialData.rooms;
+        const transactions = payload.transactions || initialData.transactions;
+        const securities = payload.securities || initialData.securities;
+
+        currentRooms = rooms;
+        roomMap = new Map(rooms.map((room) => [room.id, room]));
+        renderRoomSummary(rooms);
+        currentTransactions = transactions;
+        currentSecurities = securities;
+        renderRequests();
+      };
+
+      renderDashboard(initialData);
+
+      const socket = io();
+      socket.on('dashboard:update', (payload) => {
+        renderDashboard(payload);
+      });
+    </script>
+    <footer class="site-footer">
+      <p>©2026 by <a href="https://kevinchr.com" target="_blank" rel="noopener noreferrer">kevinchr</a> | All rights reserved.</p>
+    </footer>
+  </body>
+</html>

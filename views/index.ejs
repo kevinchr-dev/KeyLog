@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digital Key Log</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-page="borrow-form">
+    <nav class="topbar">
+      <div class="brand"><span class="brand-mark">DKL</span> Digital Key Log</div>
+    </nav>
+
+    <main class="page">
+      <section class="mobile-shell">
+        <span class="eyebrow">Universitas Ciputra</span>
+        <h1 class="heading">Peminjaman Kunci</h1>
+        <p class="subheading">Isi data peminjam dan pilih ruangan yang akan dipinjam.</p>
+
+        <form id="borrow-form" class="form-grid">
+          <div class="field">
+            <label for="borrower_name">Nama Lengkap</label>
+            <input id="borrower_name" name="borrower_name" type="text" required />
+          </div>
+
+          <div class="field">
+            <label for="borrower_id_number">Nomor Induk (NIM / NIK)</label>
+            <input id="borrower_id_number" name="borrower_id_number" type="text" required />
+          </div>
+
+          <div class="field">
+            <label for="borrower_phone">Nomor WhatsApp / HP</label>
+            <input id="borrower_phone" name="borrower_phone" type="tel" required />
+          </div>
+
+          <div class="field">
+            <label id="room-picker-label" for="room-search">Pilih Ruangan / Kunci</label>
+            <div class="room-picker" id="room-picker">
+              <div class="room-picker-field">
+                <div id="selected-room-chips" class="room-chips" aria-live="polite"></div>
+                <input id="room-search" class="room-search" type="search" placeholder="Cari ruangan..." autocomplete="off" aria-labelledby="room-picker-label" aria-expanded="false" aria-controls="room-options" />
+                <button id="room-picker-toggle" class="room-picker-toggle" type="button" aria-label="Tampilkan daftar ruangan" aria-expanded="false" aria-controls="room-options">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" class="h-4 w-4">
+                    <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </div>
+              <div id="room-picker-menu" class="room-picker-menu" hidden>
+                <div id="room-options" class="room-options" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="primary-btn">Kirim Permintaan</button>
+        </form>
+
+        <div id="form-response" class="response" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      const responseBox = document.getElementById('form-response');
+      const roomPicker = document.getElementById('room-picker');
+      const roomPickerMenu = document.getElementById('room-picker-menu');
+      const roomPickerToggle = document.getElementById('room-picker-toggle');
+      const roomOptions = document.getElementById('room-options');
+      const roomSearch = document.getElementById('room-search');
+      const selectedRoomChips = document.getElementById('selected-room-chips');
+
+      const setRoomPickerOpen = (isOpen) => {
+        roomPicker.classList.toggle('is-open', isOpen);
+        roomPickerMenu.hidden = !isOpen;
+        roomPickerToggle.setAttribute('aria-expanded', String(isOpen));
+        roomSearch.setAttribute('aria-expanded', String(isOpen));
+      };
+
+      const renderSelectedRoomChips = () => {
+        selectedRoomChips.replaceChildren();
+
+        roomOptions.querySelectorAll('input[name="rooms"]:checked').forEach((input) => {
+          const roomName = input.closest('.room-option').querySelector('span').textContent;
+          const chip = document.createElement('span');
+          const name = document.createElement('span');
+          const remove = document.createElement('button');
+
+          chip.className = 'room-chip';
+          name.className = 'room-chip-name';
+          name.textContent = roomName;
+          remove.className = 'room-chip-remove';
+          remove.type = 'button';
+          remove.textContent = '×';
+          remove.setAttribute('aria-label', `Hapus ${roomName}`);
+          remove.dataset.removeRoom = input.value;
+          chip.append(name, remove);
+          selectedRoomChips.appendChild(chip);
+        });
+
+        roomSearch.placeholder = selectedRoomChips.childElementCount
+          ? 'Tambah ruangan...'
+          : 'Cari ruangan...';
+      };
+
+      const renderRooms = (rooms) => {
+        const selectedRoomIds = new Set(
+          [...roomOptions.querySelectorAll('input[name="rooms"]:checked')]
+            .map((input) => input.value)
+        );
+
+        roomOptions.replaceChildren();
+
+        rooms.forEach((room) => {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          const name = document.createElement('span');
+          const status = document.createElement('small');
+          const unavailable = room.status === 'BORROWED';
+
+          label.className = `room-option${unavailable ? ' disabled' : ''}`;
+          input.type = 'checkbox';
+          input.name = 'rooms';
+          input.value = room.id;
+          input.checked = selectedRoomIds.has(room.id) && !unavailable;
+          input.disabled = unavailable;
+          name.textContent = room.room_name;
+          status.className = 'room-status';
+          status.textContent = unavailable ? 'Sedang dipinjam' : 'Tersedia';
+
+          label.append(input, name, status);
+          roomOptions.appendChild(label);
+        });
+
+        filterRooms();
+        renderSelectedRoomChips();
+      };
+
+      const filterRooms = () => {
+        const query = roomSearch.value.trim().toLocaleLowerCase();
+        roomOptions.querySelectorAll('.room-option').forEach((option) => {
+          option.hidden = !option.querySelector('span').textContent.toLocaleLowerCase().includes(query);
+        });
+      };
+
+      renderRooms(<%- JSON.stringify(rooms) %>);
+      roomSearch.addEventListener('input', filterRooms);
+      roomSearch.addEventListener('focus', () => setRoomPickerOpen(true));
+      roomPickerToggle.addEventListener('click', () => {
+        setRoomPickerOpen(roomPickerMenu.hidden);
+        if (!roomPickerMenu.hidden) roomSearch.focus();
+      });
+      roomOptions.addEventListener('change', renderSelectedRoomChips);
+      selectedRoomChips.addEventListener('click', (event) => {
+        const removeButton = event.target.closest('[data-remove-room]');
+        if (!removeButton) return;
+
+        const input = roomOptions.querySelector(`input[name="rooms"][value="${CSS.escape(removeButton.dataset.removeRoom)}"]`);
+        if (input) {
+          input.checked = false;
+          renderSelectedRoomChips();
+        }
+      });
+      document.addEventListener('click', (event) => {
+        if (!roomPicker.contains(event.target)) setRoomPickerOpen(false);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') setRoomPickerOpen(false);
+      });
+
+      socket.on('dashboard:update', (payload) => {
+        renderRooms(payload.rooms || []);
+      });
+
+      document.getElementById('borrow-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const rooms = formData.getAll('rooms');
+        const payload = {
+          borrower_name: formData.get('borrower_name'),
+          borrower_id_number: formData.get('borrower_id_number'),
+          borrower_phone: formData.get('borrower_phone'),
+          rooms
+        };
+
+        responseBox.className = 'response';
+        responseBox.textContent = 'Mengirim permintaan...';
+
+        try {
+          const response = await fetch('/api/borrow-request', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.message || 'Permintaan gagal dikirim.');
+          }
+
+          responseBox.classList.add('success');
+          responseBox.textContent = result.message;
+          event.target.reset();
+          renderSelectedRoomChips();
+          setRoomPickerOpen(false);
+        } catch (error) {
+          responseBox.classList.add('error');
+          responseBox.textContent = error.message;
+        }
+      });
+    </script>
+    <footer class="site-footer">
+      <p>©2026 by <a href="https://kevinchr.com" target="_blank" rel="noopener noreferrer">kevinchr</a> | All rights reserved.</p>
+    </footer>
+  </body>
+</html>

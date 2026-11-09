@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digital Key Log | Security Login</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <nav class="topbar">
+      <div class="brand"><span class="brand-mark">DKL</span> Digital Key Log · Security Access</div>
+      <div class="nav-links">
+        <a href="/">Home</a>
+      </div>
+    </nav>
+
+    <main class="page">
+      <section class="panel auth-shell">
+        <span class="eyebrow">Universitas Ciputra</span>
+        <h1 class="heading">Login Security</h1>
+        <p class="subheading">Masukkan PIN 6 digit untuk membuka dashboard.</p>
+
+        <form action="/dashboard/security/login" method="POST" class="form-grid">
+          <div class="field">
+            <label for="pin">PIN Security</label>
+            <input id="pin" name="pin" type="password" inputmode="numeric" maxlength="6" pattern="\d{6}" required />
+          </div>
+          <button type="submit" class="primary-btn">Masuk Dashboard</button>
+        </form>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <p>©2026 by <a href="https://kevinchr.com" target="_blank" rel="noopener noreferrer">kevinchr</a> | All rights reserved.</p>
+    </footer>
+  </body>
+</html>

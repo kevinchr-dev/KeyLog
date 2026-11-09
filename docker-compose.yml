@@ -1,0 +1,38 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: keylocker
+      PGUSER: keylocker
+      PGPASSWORD: ${POSTGRES_PASSWORD:-keylocker123}
+      SESSION_SECRET: ${SESSION_SECRET:-local-development-secret}
+      ADMIN_PIN: ${ADMIN_PIN:-000000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keylocker
+      POSTGRES_USER: keylocker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-keylocker123}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keylocker -d keylocker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

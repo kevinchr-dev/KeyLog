@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digital Key Log | Admin Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <nav class="topbar">
+      <div class="brand"><span class="brand-mark">DKL</span> Digital Key Log · Admin Dashboard</div>
+      <div class="nav-links">
+        <span>Admin Panel</span>
+        <form action="/logout" method="POST" style="display:inline; margin: 0;">
+          <button type="submit" class="link-button secondary-btn px-3 py-2 text-xs">Logout</button>
+        </form>
+      </div>
+    </nav>
+
+    <main class="page">
+      <header class="page-intro">
+        <div>
+          <span class="eyebrow">Administrasi</span>
+          <h1 class="heading">Kelola Digital Key Log</h1>
+        </div>
+        <p id="admin-sync-status" class="sync-status" aria-live="polite"></p>
+      </header>
+
+      <div class="admin-layout">
+        <nav class="admin-tabs" role="tablist" aria-label="Bagian admin" aria-orientation="vertical">
+          <button id="rooms-tab" class="admin-tab" type="button" role="tab" aria-selected="true" aria-controls="rooms-panel">
+            <span class="admin-tab-icon" aria-hidden="true">01</span>
+            <span><strong>Ruangan</strong><small>Kelola kunci dan ruangan</small></span>
+          </button>
+          <button id="security-tab" class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="security-panel" tabindex="-1">
+            <span class="admin-tab-icon" aria-hidden="true">02</span>
+            <span><strong>Security</strong><small>Kelola petugas</small></span>
+          </button>
+          <button id="audit-tab" class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="audit-panel" tabindex="-1">
+            <span class="admin-tab-icon" aria-hidden="true">03</span>
+            <span><strong>Audit log</strong><small>Riwayat transaksi detail</small></span>
+          </button>
+        </nav>
+
+        <div class="admin-content">
+          <label id="admin-search-label" class="admin-search-field">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="8.75" cy="8.75" r="5.75" stroke="currentColor" stroke-width="1.5" />
+              <path d="m13 13 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <input id="admin-search" type="search" placeholder="Cari nama ruangan..." autocomplete="off" aria-labelledby="admin-search-label" />
+          </label>
+
+          <section id="rooms-panel" class="panel admin-panel" role="tabpanel" aria-labelledby="rooms-tab">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Master data</span>
+                <h2>Manajemen Ruangan</h2>
+              </div>
+              <span id="room-count" class="count-badge">0 ruangan</span>
+            </div>
+            <form id="room-form" class="admin-form">
+              <div class="field">
+                <label for="room_name">Nama ruangan / kunci</label>
+                <input id="room_name" name="room_name" type="text" placeholder="Contoh: Lab Komputer 3" required />
+              </div>
+              <button type="submit" class="primary-btn">Tambah ruangan</button>
+            </form>
+            <div class="response" id="room-response" aria-live="polite"></div>
+            <div class="section-divider"></div>
+            <ul id="room-list" class="meta-list"></ul>
+            <div class="inactive-security-control">
+              <button id="inactive-room-toggle" class="secondary-btn" type="button" aria-expanded="false" aria-controls="inactive-room-section">
+                Tampilkan ruangan nonaktif
+              </button>
+            </div>
+            <section id="inactive-room-section" class="inactive-security-section" hidden>
+              <div class="inactive-security-heading">
+                <h3>Ruangan nonaktif</h3>
+                <span id="inactive-room-count" class="count-badge">0 ruangan</span>
+              </div>
+              <ul id="inactive-room-list" class="meta-list"></ul>
+            </section>
+          </section>
+
+          <section id="security-panel" class="panel admin-panel" role="tabpanel" aria-labelledby="security-tab" hidden>
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Akses petugas</span>
+                <h2>Manajemen Security</h2>
+              </div>
+              <span id="security-count" class="count-badge">0 petugas</span>
+            </div>
+            <form id="security-form" class="admin-form">
+              <div class="field">
+                <label for="security-name">Nama security</label>
+                <input id="security-name" name="name" type="text" required />
+              </div>
+              <button type="submit" class="primary-btn">Tambah security</button>
+            </form>
+            <div class="response" id="security-response" aria-live="polite"></div>
+            <div class="section-divider"></div>
+            <ul id="security-list" class="meta-list"></ul>
+            <div class="inactive-security-control">
+              <button id="inactive-security-toggle" class="secondary-btn" type="button" aria-expanded="false" aria-controls="inactive-security-section">
+                Tampilkan security nonaktif
+              </button>
+            </div>
+            <section id="inactive-security-section" class="inactive-security-section" hidden>
+              <div class="inactive-security-heading">
+                <h3>Security nonaktif</h3>
+                <span id="inactive-security-count" class="count-badge">0 petugas</span>
+              </div>
+              <ul id="inactive-security-list" class="meta-list"></ul>
+            </section>
+
+            <div class="section-divider"></div>
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Akses bersama</span>
+                <h2>Reset PIN Security</h2>
+              </div>
+            </div>
+            <p class="audit-description">Satu PIN digunakan bersama oleh seluruh petugas aktif.</p>
+            <form id="security-pin-form" class="admin-form">
+              <div class="field">
+                <label for="security-pin">PIN baru (6 digit)</label>
+                <input id="security-pin" name="pin" type="password" inputmode="numeric" maxlength="6" pattern="\\d{6}" autocomplete="new-password" required />
+              </div>
+              <button type="submit" class="secondary-btn">Simpan PIN</button>
+            </form>
+            <div class="response" id="security-pin-response" aria-live="polite"></div>
+            <div class="section-divider"></div>
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Akses administrasi</span>
+                <h2>Reset PIN Admin</h2>
+              </div>
+            </div>
+            <p class="audit-description">Gunakan PIN baru 6 digit untuk login admin berikutnya.</p>
+            <form id="admin-pin-form" class="admin-form">
+              <div class="field">
+                <label for="admin-pin">PIN admin baru (6 digit)</label>
+                <input id="admin-pin" name="pin" type="password" inputmode="numeric" maxlength="6" pattern="\\d{6}" autocomplete="new-password" required />
+              </div>
+              <button type="submit" class="secondary-btn">Simpan PIN Admin</button>
+            </form>
+            <div class="response" id="admin-pin-response" aria-live="polite"></div>
+          </section>
+
+          <section id="audit-panel" class="panel admin-panel" role="tabpanel" aria-labelledby="audit-tab" hidden>
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Jejak aktivitas</span>
+                <h2>Audit Log Sistem</h2>
+              </div>
+              <span id="audit-count" class="count-badge">0 aktivitas · 0 transaksi</span>
+            </div>
+            <p class="audit-description">Login, perubahan data, reset PIN, dan aktivitas peminjaman dicatat dengan waktu lengkap.</p>
+            <div class="audit-subsection-heading">
+              <h3>Aktivitas sistem</h3>
+            </div>
+            <ul id="activity-log-list" class="audit-list"></ul>
+            <div class="section-divider"></div>
+            <div class="audit-subsection-heading">
+              <h3>Riwayat transaksi kunci</h3>
+            </div>
+            <ul id="audit-list" class="audit-list"></ul>
+          </section>
+        </div>
+      </div>
+
+      <dialog id="edit-record-dialog" class="edit-record-dialog">
+        <form id="edit-record-form" class="form-grid">
+          <div>
+            <span class="eyebrow">Perbarui data</span>
+            <h2 id="edit-record-title" class="dialog-title">Edit data</h2>
+          </div>
+          <div class="field">
+            <label id="edit-record-label" for="edit-record-name">Nama</label>
+            <input id="edit-record-name" name="name" type="text" required />
+          </div>
+          <p id="edit-record-error" class="response error" aria-live="polite"></p>
+          <div class="dialog-actions">
+            <button id="cancel-edit-record" class="secondary-btn" type="button">Batal</button>
+            <button class="primary-btn" type="submit">Simpan perubahan</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const initialData = <%- JSON.stringify({ rooms, securities, transactions, activityLogs }).replace(/</g, '\\u003c') %>;
+      const socket = io();
+
+      const roomList = document.getElementById('room-list');
+      const inactiveRoomList = document.getElementById('inactive-room-list');
+      const inactiveRoomSection = document.getElementById('inactive-room-section');
+      const inactiveRoomToggle = document.getElementById('inactive-room-toggle');
+      const securityList = document.getElementById('security-list');
+      const inactiveSecurityList = document.getElementById('inactive-security-list');
+      const inactiveSecuritySection = document.getElementById('inactive-security-section');
+      const inactiveSecurityToggle = document.getElementById('inactive-security-toggle');
+      const auditList = document.getElementById('audit-list');
+      const activityLogList = document.getElementById('activity-log-list');
+      const syncStatus = document.getElementById('admin-sync-status');
+      const adminSearch = document.getElementById('admin-search');
+      const editDialog = document.getElementById('edit-record-dialog');
+      const editForm = document.getElementById('edit-record-form');
+      const editNameInput = document.getElementById('edit-record-name');
+      const editTitle = document.getElementById('edit-record-title');
+      const editLabel = document.getElementById('edit-record-label');
+      const editError = document.getElementById('edit-record-error');
+      let latestPayload = initialData;
+      let activeAdminSection = 'rooms';
+      let refreshPromise = null;
+      let editingRecord = null;
+      const adminTabs = [
+        { button: document.getElementById('rooms-tab'), panel: document.getElementById('rooms-panel') },
+        { button: document.getElementById('security-tab'), panel: document.getElementById('security-panel') },
+        { button: document.getElementById('audit-tab'), panel: document.getElementById('audit-panel') },
+      ];
+
+      const activateAdminTab = (activeTab, moveFocus = false) => {
+        adminTabs.forEach(({ button, panel }) => {
+          const isActive = button === activeTab;
+          button.setAttribute('aria-selected', String(isActive));
+          button.tabIndex = isActive ? 0 : -1;
+          panel.hidden = !isActive;
+        });
+
+        activeAdminSection = activeTab.id.replace('-tab', '');
+        adminSearch.placeholder = {
+          rooms: 'Cari nama ruangan...',
+          security: 'Cari nama security...',
+          audit: 'Cari peminjam, NIM, ruangan, atau security...',
+        }[activeAdminSection];
+        renderAdminDashboard(latestPayload);
+
+        if (moveFocus) activeTab.focus();
+      };
+
+      adminTabs.forEach(({ button }, index) => {
+        button.addEventListener('click', () => activateAdminTab(button));
+        button.addEventListener('keydown', (event) => {
+          if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const nextIndex = event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? adminTabs.length - 1
+              : event.key === 'ArrowDown'
+                ? (index + 1) % adminTabs.length
+                : (index - 1 + adminTabs.length) % adminTabs.length;
+          activateAdminTab(adminTabs[nextIndex].button, true);
+        });
+      });
+
+      const formatTimestamp = (timestamp) => new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+        timeZoneName: 'short',
+      }).format(new Date(timestamp));
+
+      const createAuditEvent = (title, timestamp, actor, tone) => {
+        const item = document.createElement('li');
+        const marker = document.createElement('span');
+        const details = document.createElement('div');
+        const heading = document.createElement('strong');
+        const time = document.createElement('time');
+
+        item.className = 'audit-event';
+        marker.className = `audit-event-marker ${tone}`;
+        details.className = 'audit-event-details';
+        heading.textContent = title;
+        time.className = 'audit-timestamp';
+        time.dateTime = timestamp;
+        time.textContent = formatTimestamp(timestamp);
+        details.append(heading, time);
+
+        if (actor) {
+          const actorLabel = document.createElement('span');
+          actorLabel.className = 'audit-actor';
+          actorLabel.textContent = actor;
+          details.appendChild(actorLabel);
+        }
+
+        item.append(marker, details);
+        return item;
+      };
+
+      const renderAdminDashboard = (payload) => {
+        latestPayload = payload;
+        const rooms = payload.rooms || [];
+        const securities = payload.securities || [];
+        const transactions = payload.transactions || [];
+        const activityLogs = payload.activityLogs || [];
+        const query = adminSearch.value.trim().toLocaleLowerCase();
+        const roomMap = new Map(rooms.map((room) => [room.id, room.room_name]));
+        const securityMap = new Map(securities.map((security) => [security.id, security.name]));
+
+        const activeRooms = rooms.filter((room) => room.is_active !== false);
+        const inactiveRooms = rooms.filter((room) => room.is_active === false);
+        const visibleRooms = activeAdminSection === 'rooms'
+          ? activeRooms.filter((room) => room.room_name.toLocaleLowerCase().includes(query))
+          : activeRooms;
+        const visibleInactiveRooms = activeAdminSection === 'rooms'
+          ? inactiveRooms.filter((room) => room.room_name.toLocaleLowerCase().includes(query))
+          : inactiveRooms;
+        document.getElementById('room-count').textContent = query && activeAdminSection === 'rooms'
+          ? `${visibleRooms.length} dari ${activeRooms.length} aktif`
+          : `${activeRooms.length} aktif`;
+        document.getElementById('inactive-room-count').textContent = query && activeAdminSection === 'rooms'
+          ? `${visibleInactiveRooms.length} dari ${inactiveRooms.length} nonaktif`
+          : `${inactiveRooms.length} nonaktif`;
+        inactiveRoomToggle.hidden = inactiveRooms.length === 0;
+        if (inactiveRoomToggle.hidden) inactiveRoomSection.hidden = true;
+        inactiveRoomToggle.textContent = inactiveRoomSection.hidden
+          ? `Tampilkan ruangan nonaktif (${inactiveRooms.length})`
+          : `Sembunyikan ruangan nonaktif (${inactiveRooms.length})`;
+        inactiveRoomToggle.setAttribute('aria-expanded', String(!inactiveRoomSection.hidden));
+        roomList.replaceChildren(...(visibleRooms.length ? visibleRooms.map((room) => {
+          const item = document.createElement('li');
+          const name = document.createElement('strong');
+          const status = document.createElement('span');
+          const actions = document.createElement('div');
+          const editButton = document.createElement('button');
+          const deactivateButton = document.createElement('button');
+          item.className = 'admin-list-item';
+          name.textContent = room.room_name;
+          status.className = `room-status-badge${room.status === 'BORROWED' ? ' is-borrowed' : ''}`;
+          status.textContent = room.status === 'BORROWED' ? 'Dipinjam' : 'Tersedia';
+          actions.className = 'admin-list-actions';
+          editButton.className = 'secondary-btn edit-record-btn';
+          editButton.type = 'button';
+          editButton.textContent = 'Edit';
+          editButton.dataset.recordType = 'room';
+          editButton.dataset.recordId = room.id;
+          editButton.dataset.recordName = room.room_name;
+          deactivateButton.className = 'danger-btn deactivate-room-btn';
+          deactivateButton.type = 'button';
+          deactivateButton.textContent = 'Nonaktifkan';
+          deactivateButton.dataset.roomId = room.id;
+          deactivateButton.dataset.roomName = room.room_name;
+          deactivateButton.disabled = room.status === 'BORROWED';
+          if (deactivateButton.disabled) deactivateButton.title = 'Ruangan sedang dipinjam atau memiliki permintaan aktif';
+          actions.append(status, editButton, deactivateButton);
+          item.append(name, actions);
+          return item;
+        }) : [createEmptyListItem(query ? 'Tidak ada ruangan yang cocok dengan pencarian.' : 'Belum ada ruangan.')]));
+        inactiveRoomList.replaceChildren(...(visibleInactiveRooms.length ? visibleInactiveRooms.map((room) => {
+          const item = document.createElement('li');
+          const name = document.createElement('strong');
+          const status = document.createElement('span');
+          const actions = document.createElement('div');
+          const editButton = document.createElement('button');
+          const reactivateButton = document.createElement('button');
+          item.className = 'admin-list-item';
+          name.textContent = room.room_name;
+          status.className = 'room-status-badge is-borrowed';
+          status.textContent = 'Nonaktif';
+          actions.className = 'admin-list-actions';
+          editButton.className = 'secondary-btn edit-record-btn';
+          editButton.type = 'button';
+          editButton.textContent = 'Edit';
+          editButton.dataset.recordType = 'room';
+          editButton.dataset.recordId = room.id;
+          editButton.dataset.recordName = room.room_name;
+          reactivateButton.className = 'primary-btn reactivate-room-btn';
+          reactivateButton.type = 'button';
+          reactivateButton.textContent = 'Aktifkan kembali';
+          reactivateButton.dataset.roomId = room.id;
+          actions.append(status, editButton, reactivateButton);
+          item.append(name, actions);
+          return item;
+        }) : [createEmptyListItem(query ? 'Tidak ada ruangan nonaktif yang cocok.' : 'Tidak ada ruangan nonaktif.')]));
+
+        const activeSecurities = securities.filter((security) => security.is_active);
+        const inactiveSecurities = securities.filter((security) => !security.is_active);
+        const visibleSecurities = activeAdminSection === 'security'
+          ? activeSecurities.filter((security) => security.name.toLocaleLowerCase().includes(query))
+          : activeSecurities;
+        const visibleInactiveSecurities = activeAdminSection === 'security'
+          ? inactiveSecurities.filter((security) => security.name.toLocaleLowerCase().includes(query))
+          : inactiveSecurities;
+        document.getElementById('security-count').textContent = query && activeAdminSection === 'security'
+          ? `${visibleSecurities.length} dari ${activeSecurities.length} aktif`
+          : `${activeSecurities.length} aktif`;
+        document.getElementById('inactive-security-count').textContent = query && activeAdminSection === 'security'
+          ? `${visibleInactiveSecurities.length} dari ${inactiveSecurities.length} nonaktif`
+          : `${inactiveSecurities.length} nonaktif`;
+        inactiveSecurityToggle.hidden = inactiveSecurities.length === 0;
+        if (inactiveSecurityToggle.hidden) inactiveSecuritySection.hidden = true;
+        inactiveSecurityToggle.textContent = inactiveSecuritySection.hidden
+          ? `Tampilkan security nonaktif (${inactiveSecurities.length})`
+          : `Sembunyikan security nonaktif (${inactiveSecurities.length})`;
+        inactiveSecurityToggle.setAttribute('aria-expanded', String(!inactiveSecuritySection.hidden));
+        securityList.replaceChildren(...(visibleSecurities.length ? visibleSecurities.map((security) => {
+          const item = document.createElement('li');
+          const name = document.createElement('strong');
+          const status = document.createElement('span');
+          const actions = document.createElement('div');
+          item.className = 'admin-list-item';
+          name.textContent = security.name;
+          status.className = 'room-status-badge';
+          status.textContent = 'Aktif';
+          actions.className = 'admin-list-actions';
+          actions.appendChild(status);
+
+          const editButton = document.createElement('button');
+          editButton.className = 'secondary-btn edit-record-btn';
+          editButton.type = 'button';
+          editButton.textContent = 'Edit';
+          editButton.dataset.recordType = 'security';
+          editButton.dataset.recordId = security.id;
+          editButton.dataset.recordName = security.name;
+
+          const removeButton = document.createElement('button');
+          removeButton.className = 'danger-btn delete-security-btn';
+          removeButton.type = 'button';
+          removeButton.textContent = 'Nonaktifkan';
+          removeButton.dataset.securityId = security.id;
+          removeButton.dataset.securityName = security.name;
+          actions.append(editButton, removeButton);
+
+          item.append(name, actions);
+          return item;
+        }) : [createEmptyListItem(query ? 'Tidak ada security yang cocok dengan pencarian.' : 'Belum ada security.')]));
+
+        inactiveSecurityList.replaceChildren(...(visibleInactiveSecurities.length ? visibleInactiveSecurities.map((security) => {
+          const item = document.createElement('li');
+          const name = document.createElement('strong');
+          const status = document.createElement('span');
+          const actions = document.createElement('div');
+          const editButton = document.createElement('button');
+          const reactivateButton = document.createElement('button');
+          item.className = 'admin-list-item';
+          name.textContent = security.name;
+          status.className = 'room-status-badge is-borrowed';
+          status.textContent = 'Nonaktif';
+          actions.className = 'admin-list-actions';
+          editButton.className = 'secondary-btn edit-record-btn';
+          editButton.type = 'button';
+          editButton.textContent = 'Edit';
+          editButton.dataset.recordType = 'security';
+          editButton.dataset.recordId = security.id;
+          editButton.dataset.recordName = security.name;
+          reactivateButton.className = 'primary-btn reactivate-security-btn';
+          reactivateButton.type = 'button';
+          reactivateButton.textContent = 'Aktifkan kembali';
+          reactivateButton.dataset.securityId = security.id;
+          actions.append(status, editButton, reactivateButton);
+          item.append(name, actions);
+          return item;
+        }) : [createEmptyListItem(query ? 'Tidak ada security nonaktif yang cocok.' : 'Tidak ada security nonaktif.')]));
+
+        const visibleActivityLogs = activeAdminSection === 'audit'
+          ? activityLogs.filter((activity) => [
+            activity.action,
+            activity.actor_role,
+            activity.actor_name,
+            activity.description,
+            formatTimestamp(activity.timestamp),
+          ].filter(Boolean).join(' ').toLocaleLowerCase().includes(query))
+          : activityLogs;
+        const visibleTransactions = activeAdminSection === 'audit'
+          ? transactions.filter((transaction) => {
+            const roomNames = transaction.room_names?.join(' ')
+              || (transaction.rooms || []).map((roomId) => roomMap.get(roomId) || roomId).join(' ');
+            const securityNames = [
+                transaction.issued_by_security_name || securityMap.get(transaction.issued_by_security_id),
+                transaction.received_by_security_name || securityMap.get(transaction.received_by_security_id),
+            ].filter(Boolean).join(' ');
+            const searchableText = [
+              transaction.borrower_name,
+              transaction.borrower_id_number,
+              transaction.borrower_phone,
+              transaction.status,
+              roomNames,
+              securityNames,
+              formatTimestamp(transaction.created_at),
+              transaction.borrowed_at && formatTimestamp(transaction.borrowed_at),
+              transaction.returned_at && formatTimestamp(transaction.returned_at),
+            ].filter(Boolean).join(' ').toLocaleLowerCase();
+            return searchableText.includes(query);
+          })
+          : transactions;
+        document.getElementById('audit-count').textContent = `${visibleActivityLogs.length} aktivitas · ${visibleTransactions.length} transaksi`;
+        activityLogList.replaceChildren(...(visibleActivityLogs.length ? visibleActivityLogs.map((activity) => {
+          const item = document.createElement('li');
+          const header = document.createElement('div');
+          const identity = document.createElement('div');
+          const action = document.createElement('strong');
+          const description = document.createElement('p');
+          const role = document.createElement('span');
+          const time = document.createElement('time');
+          item.className = 'audit-entry activity-entry';
+          header.className = 'audit-entry-header';
+          identity.className = 'audit-borrower';
+          action.textContent = activity.action;
+          description.className = 'activity-description';
+          description.textContent = activity.description;
+          role.className = 'audit-actor';
+          role.textContent = `${activity.actor_name} · ${activity.actor_role}`;
+          time.className = 'audit-timestamp';
+          time.dateTime = activity.timestamp;
+          time.textContent = formatTimestamp(activity.timestamp);
+          identity.append(action, description, role);
+          header.append(identity, time);
+          item.appendChild(header);
+          return item;
+        }) : [createEmptyListItem(query ? 'Tidak ada aktivitas yang cocok dengan pencarian.' : 'Belum ada aktivitas sistem.')]));
+        auditList.replaceChildren(...(visibleTransactions.length ? visibleTransactions.map((transaction) => {
+          const item = document.createElement('li');
+          const header = document.createElement('div');
+          const identity = document.createElement('div');
+          const borrower = document.createElement('strong');
+          const metadata = document.createElement('p');
+          const status = document.createElement('span');
+          const roomNames = transaction.room_names?.join(', ') || (transaction.rooms || [])
+            .map((roomId) => roomMap.get(roomId) || roomId)
+            .join(', ');
+          const timeline = document.createElement('ol');
+
+          item.className = 'audit-entry';
+          header.className = 'audit-entry-header';
+          identity.className = 'audit-borrower';
+          borrower.textContent = transaction.borrower_name;
+          metadata.textContent = `NIM/NIK ${transaction.borrower_id_number} · ${transaction.borrower_phone} · ${roomNames}`;
+          status.className = `badge ${transaction.status.toLowerCase()}`;
+          status.textContent = transaction.status;
+          identity.append(borrower, metadata);
+          header.append(identity, status);
+          timeline.className = 'audit-timeline';
+          timeline.appendChild(createAuditEvent('Permintaan diajukan', transaction.created_at, transaction.borrower_name, 'requested'));
+
+          if (transaction.borrowed_at) {
+            timeline.appendChild(createAuditEvent(
+              'Kunci dipinjamkan',
+              transaction.borrowed_at,
+              transaction.issued_by_security_name || securityMap.get(transaction.issued_by_security_id) || 'Security tidak diketahui',
+              'borrowed'
+            ));
+          }
+
+          if (transaction.returned_at) {
+            timeline.appendChild(createAuditEvent(
+              'Kunci dikembalikan',
+              transaction.returned_at,
+              transaction.received_by_security_name || securityMap.get(transaction.received_by_security_id) || 'Security tidak diketahui',
+              'returned'
+            ));
+          }
+
+          item.append(header, timeline);
+          return item;
+        }) : [createEmptyListItem(query ? 'Tidak ada audit log yang cocok dengan pencarian.' : 'Belum ada riwayat transaksi.')]));
+      };
+
+      const createEmptyListItem = (message) => {
+        const item = document.createElement('li');
+        item.className = 'request-card empty-list-item';
+        item.textContent = message;
+        return item;
+      };
+
+      const openEditDialog = (type, id, name) => {
+        editingRecord = { type, id };
+        editTitle.textContent = type === 'room' ? 'Edit ruangan' : 'Edit security';
+        editLabel.textContent = type === 'room' ? 'Nama ruangan / kunci' : 'Nama security';
+        editNameInput.value = name;
+        editError.textContent = '';
+        editDialog.showModal();
+        editNameInput.focus();
+        editNameInput.select();
+      };
+
+      document.querySelector('.admin-content').addEventListener('click', (event) => {
+        const button = event.target.closest('.edit-record-btn');
+        if (!button) return;
+        openEditDialog(button.dataset.recordType, button.dataset.recordId, button.dataset.recordName);
+      });
+
+      document.getElementById('cancel-edit-record').addEventListener('click', () => {
+        editDialog.close();
+      });
+
+      editForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!editingRecord) return;
+
+        const endpoint = editingRecord.type === 'room'
+          ? `/api/admin/rooms/${encodeURIComponent(editingRecord.id)}`
+          : `/api/admin/security/${encodeURIComponent(editingRecord.id)}`;
+        const body = editingRecord.type === 'room'
+          ? { room_name: editNameInput.value }
+          : { name: editNameInput.value };
+
+        try {
+          const response = await fetch(endpoint, {
+            method: editingRecord.type === 'room' ? 'PUT' : 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal memperbarui data.');
+
+          editDialog.close();
+          editingRecord = null;
+          if (activeAdminSection === 'rooms') {
+            document.getElementById('room-response').className = 'response success';
+            document.getElementById('room-response').textContent = result.message;
+          } else {
+            document.getElementById('security-response').className = 'response success';
+            document.getElementById('security-response').textContent = result.message;
+          }
+          await refreshAdminDashboard();
+        } catch (error) {
+          editError.textContent = error.message;
+        }
+      });
+
+      adminSearch.addEventListener('input', () => renderAdminDashboard(latestPayload));
+
+      inactiveRoomToggle.addEventListener('click', () => {
+        inactiveRoomSection.hidden = !inactiveRoomSection.hidden;
+        renderAdminDashboard(latestPayload);
+      });
+
+      roomList.addEventListener('click', async (event) => {
+        const button = event.target.closest('.deactivate-room-btn');
+        if (!button) return;
+        if (!window.confirm(`Nonaktifkan ${button.dataset.roomName}? Riwayat transaksi akan tetap disimpan.`)) return;
+
+        button.disabled = true;
+        try {
+          const response = await fetch(`/api/admin/rooms/${encodeURIComponent(button.dataset.roomId)}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json' },
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal menonaktifkan ruangan.');
+          document.getElementById('room-response').className = 'response success';
+          document.getElementById('room-response').textContent = result.message;
+          await refreshAdminDashboard();
+        } catch (error) {
+          button.disabled = false;
+          document.getElementById('room-response').className = 'response error';
+          document.getElementById('room-response').textContent = error.message;
+        }
+      });
+
+      inactiveRoomList.addEventListener('click', async (event) => {
+        const button = event.target.closest('.reactivate-room-btn');
+        if (!button) return;
+
+        button.disabled = true;
+        try {
+          const response = await fetch(`/api/admin/rooms/${encodeURIComponent(button.dataset.roomId)}/reactivate`, {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal mengaktifkan ruangan.');
+          document.getElementById('room-response').className = 'response success';
+          document.getElementById('room-response').textContent = result.message;
+          await refreshAdminDashboard();
+        } catch (error) {
+          button.disabled = false;
+          document.getElementById('room-response').className = 'response error';
+          document.getElementById('room-response').textContent = error.message;
+        }
+      });
+
+      const refreshAdminDashboard = async () => {
+        if (refreshPromise) return refreshPromise;
+
+        refreshPromise = (async () => {
+          try {
+            const response = await fetch('/api/admin/dashboard', {
+              headers: { Accept: 'application/json' },
+              cache: 'no-store',
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.message || 'Gagal memuat ulang data admin.');
+            renderAdminDashboard(payload);
+            syncStatus.textContent = '';
+          } catch (error) {
+            syncStatus.textContent = `Pembaruan gagal: ${error.message}`;
+          } finally {
+            refreshPromise = null;
+          }
+        })();
+
+        return refreshPromise;
+      };
+
+      renderAdminDashboard(initialData);
+
+      socket.on('dashboard:update', (payload) => {
+        if (payload.rooms) {
+          latestPayload = { ...latestPayload, rooms: payload.rooms };
+          renderAdminDashboard(latestPayload);
+        }
+        refreshAdminDashboard();
+      });
+
+      window.setInterval(refreshAdminDashboard, 10000);
+
+      document.getElementById('room-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.target;
+        const responseBox = document.getElementById('room-response');
+        const roomName = form.room_name.value.trim();
+
+        try {
+          const response = await fetch('/api/admin/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_name: roomName })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal menambah ruangan.');
+          responseBox.className = 'response success';
+          responseBox.textContent = result.message;
+          form.reset();
+          renderAdminDashboard(latestPayload);
+        } catch (error) {
+          responseBox.className = 'response error';
+          responseBox.textContent = error.message;
+        }
+      });
+
+      document.getElementById('security-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.target;
+        const responseBox = document.getElementById('security-response');
+
+        try {
+          const response = await fetch('/api/admin/security', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: form.name.value
+            })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal menambah security.');
+          responseBox.className = 'response success';
+          responseBox.textContent = result.message;
+          form.reset();
+          await refreshAdminDashboard();
+        } catch (error) {
+          responseBox.className = 'response error';
+          responseBox.textContent = error.message;
+        }
+      });
+
+      securityList.addEventListener('click', async (event) => {
+        const button = event.target.closest('.delete-security-btn');
+        if (!button) return;
+
+        const securityName = button.dataset.securityName;
+        if (!window.confirm(`Nonaktifkan ${securityName}? Riwayat transaksi akan tetap disimpan.`)) return;
+
+        button.disabled = true;
+        try {
+          const response = await fetch(`/api/admin/security/${encodeURIComponent(button.dataset.securityId)}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json' },
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal menonaktifkan security.');
+          document.getElementById('security-response').className = 'response success';
+          document.getElementById('security-response').textContent = result.message;
+          await refreshAdminDashboard();
+        } catch (error) {
+          button.disabled = false;
+          document.getElementById('security-response').className = 'response error';
+          document.getElementById('security-response').textContent = error.message;
+        }
+      });
+
+      inactiveSecurityToggle.addEventListener('click', () => {
+        inactiveSecuritySection.hidden = !inactiveSecuritySection.hidden;
+        renderAdminDashboard(latestPayload);
+      });
+
+      inactiveSecurityList.addEventListener('click', async (event) => {
+        const button = event.target.closest('.reactivate-security-btn');
+        if (!button) return;
+
+        button.disabled = true;
+        try {
+          const response = await fetch(`/api/admin/security/${encodeURIComponent(button.dataset.securityId)}/reactivate`, {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal mengaktifkan security.');
+          document.getElementById('security-response').className = 'response success';
+          document.getElementById('security-response').textContent = result.message;
+          await refreshAdminDashboard();
+        } catch (error) {
+          button.disabled = false;
+          document.getElementById('security-response').className = 'response error';
+          document.getElementById('security-response').textContent = error.message;
+        }
+      });
+
+      document.getElementById('security-pin-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.target;
+        const responseBox = document.getElementById('security-pin-response');
+
+        try {
+          const response = await fetch('/api/admin/security-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: form.pin.value }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal memperbarui PIN security.');
+          responseBox.className = 'response success';
+          responseBox.textContent = result.message;
+          form.reset();
+        } catch (error) {
+          responseBox.className = 'response error';
+          responseBox.textContent = error.message;
+        }
+      });
+
+      document.getElementById('admin-pin-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.target;
+        const responseBox = document.getElementById('admin-pin-response');
+
+        try {
+          const response = await fetch('/api/admin/admin-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: form.pin.value }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || 'Gagal memperbarui PIN admin.');
+          responseBox.className = 'response success';
+          responseBox.textContent = result.message;
+          form.reset();
+          await refreshAdminDashboard();
+        } catch (error) {
+          responseBox.className = 'response error';
+          responseBox.textContent = error.message;
+        }
+      });
+    </script>
+    <footer class="site-footer">
+      <p>©2026 by <a href="https://kevinchr.com" target="_blank" rel="noopener noreferrer">kevinchr</a> | All rights reserved.</p>
+    </footer>
+  </body>
+</html>

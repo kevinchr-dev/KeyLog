@@ -304,7 +304,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/dashboard/security/login', (req, res) => {
-  res.render('security-login');
+  res.render('security-login', { error: null });
 });
 
 app.get('/dashboard/security/', requireSecurity, (req, res) => {
@@ -316,7 +316,7 @@ app.get('/dashboard/security/', requireSecurity, (req, res) => {
 });
 
 app.get('/dashboard/admin/login', (req, res) => {
-  res.render('admin-login');
+  res.render('admin-login', { error: null });
 });
 
 app.get('/dashboard/admin/', requireAdmin, (req, res) => {
@@ -339,7 +339,9 @@ app.post('/dashboard/security/login', asyncRoute(async (req, res) => {
       description: 'Percobaan login ditolak karena PIN tidak valid.',
     });
     await persistState();
-    return res.status(401).json({ message: 'PIN keamanan tidak valid.' });
+    return res.status(401).render('security-login', {
+      error: 'PIN keamanan tidak valid. Silakan coba lagi.',
+    });
   }
 
   req.session.role = 'security';
@@ -364,7 +366,9 @@ app.post('/dashboard/admin/login', asyncRoute(async (req, res) => {
       description: 'Percobaan login ditolak karena PIN tidak valid.',
     });
     await persistState();
-    return res.status(401).json({ message: 'PIN admin tidak valid.' });
+    return res.status(401).render('admin-login', {
+      error: 'PIN admin tidak valid. Silakan coba lagi.',
+    });
   }
 
   req.session.role = 'admin';

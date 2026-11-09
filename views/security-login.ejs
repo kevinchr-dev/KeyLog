@@ -20,6 +20,10 @@
         <h1 class="heading">Login Security</h1>
         <p class="subheading">Masukkan PIN 6 digit untuk membuka dashboard.</p>
 
+        <% if (error) { %>
+          <p class="response error" role="alert"><%= error %></p>
+        <% } %>
+
         <form action="/dashboard/security/login" method="POST" class="form-grid">
           <div class="field">
             <label for="pin">PIN Security</label>

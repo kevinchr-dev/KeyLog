@@ -20,6 +20,10 @@
         <h1 class="heading">Login Admin</h1>
         <p class="subheading">Masukkan PIN admin untuk mengelola data master.</p>
 
+        <% if (error) { %>
+          <p class="response error" role="alert"><%= error %></p>
+        <% } %>
+
         <form action="/dashboard/admin/login" method="POST" class="form-grid">
           <div class="field">
             <label for="pin">PIN Admin</label>

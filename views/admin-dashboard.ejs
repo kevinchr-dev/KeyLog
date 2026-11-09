@@ -125,7 +125,7 @@
             <form id="security-pin-form" class="admin-form">
               <div class="field">
                 <label for="security-pin">PIN baru (6 digit)</label>
-                <input id="security-pin" name="pin" type="password" inputmode="numeric" maxlength="6" pattern="\\d{6}" autocomplete="new-password" required />
+                <input id="security-pin" name="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" required />
               </div>
               <button type="submit" class="secondary-btn">Simpan PIN</button>
             </form>
@@ -141,7 +141,7 @@
             <form id="admin-pin-form" class="admin-form">
               <div class="field">
                 <label for="admin-pin">PIN admin baru (6 digit)</label>
-                <input id="admin-pin" name="pin" type="password" inputmode="numeric" maxlength="6" pattern="\\d{6}" autocomplete="new-password" required />
+                <input id="admin-pin" name="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" required />
               </div>
               <button type="submit" class="secondary-btn">Simpan PIN Admin</button>
             </form>

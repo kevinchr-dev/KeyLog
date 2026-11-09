@@ -33,6 +33,12 @@ docker compose up --build -d
 docker compose logs -f app
 ```
 
+After pulling application changes on a server, rebuild and recreate the app container:
+
+```bash
+docker compose up -d --build app
+```
+
 Open the app at http://localhost:3000/. To stop the containers without deleting data:
 
 ```bash

@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "3000:3000"
+    networks:
+      - main_inet
     environment:
       PORT: 3000
       PGHOST: postgres
@@ -18,7 +20,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:latest
     restart: unless-stopped
     environment:
       POSTGRES_DB: keylocker
@@ -27,12 +29,17 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /srv/app/key_log:/var/lib/postgresql/data
+    networks:
+      - main_inet
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U keylocker -d keylocker"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-volumes:
-  pgdata:
+
+networks:
+  main_inet:
+    external: true
